@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geo IA</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; padding: 30px 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: #1e293b; padding: 30px; border-radius: 12px;
+                     box-shadow: 0 10px 25px rgba(0,0,0,.5); border: 1px solid #334155; }
+        h1 { color: #38bdf8; font-size: 28px; margin-bottom: 8px; }
+        .subtitle { color: #94a3b8; font-size: 15px; margin-bottom: 25px; }
+        h2, h3 { color: #f1f5f9; margin-top: 15px; margin-bottom: 12px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 600; margin-bottom: 8px; color: #cbd5e1; font-size: 14px; }
+        input[type="text"], textarea, input[type="file"] {
+            width: 100%; padding: 12px 15px; background-color: #0f172a; border: 1px solid #334155;
+            border-radius: 8px; color: #f8fafc; font-size: 14px; outline: none; }
+        input[type="text"]:focus, textarea:focus { border-color: #38bdf8; }
+        .coords-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn-row { display: flex; align-items: center; gap: 15px; margin-top: 25px; }
+        button.btn-primary { background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%); color: white;
+            padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; }
+        button.btn-primary:hover { opacity: .9; }
+        button.btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+        .loader-inline { display: none; align-items: center; gap: 10px; }
+        .spinner-sm { width: 22px; height: 22px; border: 3px solid #334155; border-top: 3px solid #38bdf8;
+            border-radius: 50%; animation: spin .8s linear infinite; }
+        .loader-text { color: #38bdf8; font-size: 14px; font-weight: 500; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .card { background: #0f172a; padding: 20px; border-radius: 10px; margin-top: 30px; border: 1px solid #334155; }
+        .card p { margin-bottom: 8px; color: #cbd5e1; }
+        .card strong { color: #38bdf8; }
+        .warn { background: #422006; border: 1px solid #b45309; color: #fde68a; padding: 10px 14px;
+            border-radius: 8px; margin: 10px 0; font-size: 14px; }
+        .error { background: #450a0a; border: 1px solid #b91c1c; color: #fecaca; padding: 12px 14px;
+            border-radius: 8px; margin-top: 20px; font-size: 14px; white-space: pre-wrap; display: none; }
+        .markdown-body { background: #1e293b; padding: 15px; border-radius: 8px; border-left: 4px solid #38bdf8;
+            line-height: 1.6; margin-top: 10px; }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 { color: #38bdf8; margin-top: 10px; margin-bottom: 8px; }
+        .markdown-body a { color: #60a5fa; text-decoration: underline; font-weight: 600; }
+        .markdown-body ul, .markdown-body ol { padding-left: 20px; margin-bottom: 10px; }
+        .markdown-body li { margin-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #334155; color: #cbd5e1; }
+        th { color: #38bdf8; }
+        ul.trace { padding-left: 20px; color: #cbd5e1; }
+        ul.trace li { margin-bottom: 4px; }
+        hr { border: none; border-top: 1px solid #334155; margin: 20px 0; }
+        .chat-box { border: 1px solid #334155; height: 240px; overflow-y: auto; padding: 12px; margin-bottom: 12px;
+            background: #1e293b; border-radius: 8px; }
+        .chat-box p, .chat-box div { margin-bottom: 8px; line-height: 1.4; }
+        .chat-input-row { display: flex; gap: 10px; }
+        .chat-input-row input { flex: 1; }
+        .btn-chat { background-color: #334155; color: #38bdf8; border: 1px solid #475569; padding: 0 20px;
+            border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .btn-chat:hover { background-color: #475569; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🚗 Geo IA</h1>
+    <p class="subtitle">Reporte inteligente multimodal de incidentes y movilidad</p>
+
+    <form id="incidenteForm">
+        <div class="form-group">
+            <label for="descripcion">Descripción del incidente / necesidad:</label>
+            <textarea id="descripcion" rows="3" required placeholder="Ej: Un carro volcado en la vía, hay ambulancias y bomberos."></textarea>
+        </div>
+        <div class="form-group">
+            <label for="imagen">Fotografía del caso (multimodal):</label>
+            <input type="file" id="imagen" accept="image/*" required />
+        </div>
+        <div class="form-group">
+            <label>Latitud y longitud (ubicación de origen):</label>
+            <div class="coords-grid">
+                <input type="text" id="latitud" value="4.6097" placeholder="Latitud" required>
+                <input type="text" id="longitud" value="-74.0817" placeholder="Longitud" required>
+            </div>
+        </div>
+        <div class="btn-row">
+            <button type="submit" id="btnSubmit" class="btn-primary">Enviar reporte e iniciar agentes</button>
+            <div id="loaderInline" class="loader-inline">
+                <div class="spinner-sm"></div>
+                <span class="loader-text">Procesando con los agentes de IA...</span>
+            </div>
+        </div>
+    </form>
+
+    <div id="errorBox" class="error"></div>
+
+    <div id="resultado" style="display:none;" class="card">
+        <h2>📋 Resultado del análisis e intervención de agentes</h2>
+        <div id="resAdvertencias"></div>
+        <p><strong>ID de caso registrado:</strong> <span id="resCasoId"></span></p>
+        <p><strong>Tipo de incidente:</strong> <span id="resTipo"></span></p>
+        <p><strong>Gravedad:</strong> <span id="resGravedad"></span></p>
+        <p><strong>Servicio recomendado:</strong> <span id="resServicio"></span></p>
+        <p><strong>Observaciones de la imagen:</strong> <span id="resObs"></span></p>
+        <p><strong>Evaluación de coherencia:</strong> <span id="resCoherencia"></span></p>
+        <p><strong>Ubicación registrada:</strong> <span id="resUbicacion"></span></p>
+
+        <h3>🛠️ Servicios propios cercanos (base de datos)</h3>
+        <div id="resServicios"></div>
+        <p id="resRuta" style="margin-top:10px;"></p>
+
+        <h3>📍 Recomendación logística</h3>
+        <div id="resRecomendacion" class="markdown-body"></div>
+
+        <h3 style="margin-top:20px;">🔍 Trazabilidad</h3>
+        <p><strong>Orquestación:</strong></p>
+        <ul class="trace" id="resPasos"></ul>
+        <p><strong>Agentes:</strong> <span id="resAgentes"></span></p>
+        <p><strong>Herramientas:</strong> <span id="resHerramientas"></span></p>
+        <p><strong>Acción ejecutada:</strong> <span id="resAccion"></span></p>
+
+        <hr>
+        <h2>💬 Chat contextual del caso</h2>
+        <div id="chatBox" class="chat-box"></div>
+        <div class="chat-input-row">
+            <input type="text" id="preguntaChat" placeholder="Pregunta algo sobre este reporte...">
+            <button type="button" class="btn-chat" id="btnChat">Preguntar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let casoIdActual = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
+
+    function md(texto) {
+        return typeof marked !== 'undefined' ? marked.parse(texto || '') : esc(texto);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (p) => {
+                    $('latitud').value = p.coords.latitude.toFixed(4);
+                    $('longitud').value = p.coords.longitude.toFixed(4);
+                },
+                () => console.log('GPS no permitido, usando valores por defecto.'),
+                { enableHighAccuracy: true }
+            );
+        }
+        $('incidenteForm').addEventListener('submit', procesarReporte);
+        $('btnChat').addEventListener('click', enviarPreguntaChat);
+        $('preguntaChat').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); enviarPreguntaChat(); }
+        });
+    });
+
+    async function procesarReporte(e) {
+        e.preventDefault();
+
+        const imgFile = $('imagen').files[0];
+        if (!imgFile) { alert('Selecciona una fotografía.'); return; }
+
+        $('loaderInline').style.display = 'flex';
+        $('btnSubmit').disabled = true;
+        $('resultado').style.display = 'none';
+        $('errorBox').style.display = 'none';
+
+        const formData = new FormData();
+        formData.append('descripcion', $('descripcion').value.trim());
+        formData.append('latitud', $('latitud').value.trim());
+        formData.append('longitud', $('longitud').value.trim());
+        formData.append('imagen', imgFile);
+
+        try {
+            const response = await fetch('/api/procesar-incidente', { method: 'POST', body: formData });
+
+            if (!response.ok) {
+                let detalle = response.statusText;
+                try { const j = await response.json(); detalle = j.detail || JSON.stringify(j); } catch (_) {}
+                throw new Error(`Error ${response.status}: ${detalle}`);
+            }
+
+            const data = await response.json();
+            const a = data.analisis_estructurado || {};
+
+            casoIdActual = data.caso_id;
+            $('resCasoId').textContent = data.caso_id;
+            $('resTipo').textContent = a.tipo_incidente || 'No especificado';
+
+            const grav = String(a.gravedad || 'Media');
+            const critico = /alta|cr[ií]tica/i.test(grav);
+            $('resGravedad').textContent = (critico ? '🚨 ' : '⚠️ ') + grav;
+
+            $('resServicio').textContent = a.servicio_recomendado || 'N/A';
+            $('resObs').textContent = a.observaciones_imagen || 'N/A';
+            $('resCoherencia').textContent = a.evaluacion_coherencia || 'N/A';
+
+            const u = data.ubicacion_detectada || {};
+            $('resUbicacion').textContent = u.direccion || 'N/A';
+
+            $('resAdvertencias').innerHTML = (data.advertencias || [])
+                .map((w) => `<div class="warn">⚠️ ${esc(w)}</div>`).join('');
+
+            const servicios = data.servicios_cercanos || [];
+            $('resServicios').innerHTML = servicios.length
+                ? `<table><tr><th>Servicio</th><th>Tipo</th><th>Teléfono</th><th>Distancia</th></tr>` +
+                  servicios.map((s) => `<tr><td>${esc(s.nombre)}</td><td>${esc(s.tipo)}</td>` +
+                      `<td>${esc(s.telefono)}</td><td>${esc(s.distancia_km)} km</td></tr>`).join('') +
+                  `</table>`
+                : '<p>No se consultaron servicios para este caso.</p>';
+
+            const r = data.ruta;
+            $('resRuta').innerHTML = r
+                ? `<strong>Ruta al servicio más cercano (${esc(r.destino)}):</strong> ${esc(r.distancia_km)} km` +
+                  `${r.tiempo_min != null ? ' · ~' + esc(r.tiempo_min) + ' min' : ''} <em>(${esc(r.fuente)})</em>`
+                : '';
+
+            $('resRecomendacion').innerHTML = md(data.recomendacion_logistica);
+
+            const t = data.trazabilidad || {};
+            $('resPasos').innerHTML = (t.orquestacion || []).map((p) => `<li>${esc(p)}</li>`).join('');
+            $('resAgentes').textContent = (t.agentes_participantes || []).join(', ');
+            $('resHerramientas').textContent = (t.herramientas_ejecutadas || []).join(', ');
+            $('resAccion').textContent = t.accion_realizada || '';
+
+            $('chatBox').innerHTML = '';
+            $('resultado').style.display = 'block';
+            $('resultado').scrollIntoView({ behavior: 'smooth' });
+        } catch (err) {
+            console.error(err);
+            $('errorBox').textContent = 'No se pudo procesar el reporte.\n' + err.message;
+            $('errorBox').style.display = 'block';
+        } finally {
+            $('loaderInline').style.display = 'none';
+            $('btnSubmit').disabled = false;
+        }
+    }
+
+    async function enviarPreguntaChat() {
+        const input = $('preguntaChat');
+        const preg = input.value.trim();
+        if (!preg || casoIdActual == null) return;
+
+        const chatBox = $('chatBox');
+        chatBox.insertAdjacentHTML('beforeend',
+            `<p><strong style="color:#38bdf8;">Tú:</strong> ${esc(preg)}</p>`);
+        input.value = '';
+
+        try {
+            const response = await fetch('/api/chat-contextual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ caso_id: casoIdActual, pregunta: preg })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || response.statusText);
+
+            chatBox.insertAdjacentHTML('beforeend',
+                `<div><strong style="color:#4ade80;">Asistente:</strong> ${md(data.respuesta)}</div>`);
+        } catch (err) {
+            chatBox.insertAdjacentHTML('beforeend',
+                `<p style="color:#ef4444;">Error al consultar el chat: ${esc(err.message)}</p>`);
+        }
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+</script>
+</body>
+</html>
